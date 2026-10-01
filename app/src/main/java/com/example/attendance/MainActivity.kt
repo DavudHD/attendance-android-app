@@ -1,187 +1,82 @@
-package com.example.attendance
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.kapt")
+}
 
-import android.content.Context
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import org.json.JSONArray
-import org.json.JSONObject
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import com.example.attendance.databinding.ActivityMainBinding
+android {
+    namespace = "com.example.attendance"
+    compileSdk = 34
 
-class MainActivity : AppCompatActivity() {
+    defaultConfig {
+        applicationId = "com.example.attendance"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
 
-    private lateinit var binding: ActivityMainBinding
-    private lateinit var attendanceManager: AttendanceManager
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+    signingConfigs {
+        create("release") {
+            val keystorePropertiesFile = rootProject.file("key.properties")
+            if (keystorePropertiesFile.exists()) {
+                val keystoreProperties = java.util.Properties()
+                keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
 
-        attendanceManager = AttendanceManager(this)
-        updateRecordsView()
-
-        binding.buttonCheckIn.setOnClickListener {
-            val employeeName = binding.editTextEmployeeName.text?.toString()?.trim().orEmpty()
-            val employeeId = binding.editTextEmployeeId.text?.toString()?.trim().orEmpty()
-
-            if (employeeName.isEmpty() || employeeId.isEmpty()) {
-                binding.textViewStatus.text = "يرجى إدخال اسم الموظف ورقم الموظف"
-                return@setOnClickListener
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
             }
-
-            val record = attendanceManager.recordCheckIn(employeeId, employeeName)
-            binding.textViewStatus.text = "الحالة: ${record.status}"
-            binding.textViewLastAction.text = "آخر تحديث: ${record.date} - ${record.checkInTime}"
-            updateRecordsView()
-        }
-
-        binding.buttonCheckOut.setOnClickListener {
-            val employeeName = binding.editTextEmployeeName.text?.toString()?.trim().orEmpty()
-            val employeeId = binding.editTextEmployeeId.text?.toString()?.trim().orEmpty()
-
-            if (employeeName.isEmpty() || employeeId.isEmpty()) {
-                binding.textViewStatus.text = "يرجى إدخال اسم الموظف ورقم الموظف"
-                return@setOnClickListener
-            }
-
-            val record = attendanceManager.recordCheckOut(employeeId, employeeName)
-            binding.textViewStatus.text = "الحالة: ${record.status}"
-            binding.textViewLastAction.text = "آخر تحديث: ${record.date} - ${record.checkOutTime}"
-            updateRecordsView()
         }
     }
 
-    private fun updateRecordsView() {
-        val records = attendanceManager.getRecords()
-        binding.textViewRecords.text = if (records.isEmpty()) {
-            "لا توجد سجلات بعد"
-        } else {
-            records.joinToString("\n") { record ->
-                "${record.employeeName} (${record.employeeId}) - ${record.date} - ${record.status} - دخول: ${record.checkInTime ?: "-"} - خروج: ${record.checkOutTime ?: "-"}"
-            }
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            isDebuggable = true
         }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        viewBinding = true
     }
 }
 
-class AttendanceManager(private val context: Context) {
-    private val prefs = context.getSharedPreferences("attendance_store", Context.MODE_PRIVATE)
-    private val key = "attendance_records"
+dependencies {
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
-    fun recordCheckIn(employeeId: String, employeeName: String): AttendanceRecord {
-        val now = LocalDate.now()
-        val currentTime = LocalTime.now()
-        val formattedDate = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        val formattedTime = currentTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-        val lateThreshold = LocalTime.of(8, 30)
-        val status = if (currentTime.isAfter(lateThreshold)) "متأخر" else "حاضر"
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3")
 
-        val records = getRecords().toMutableList()
-        val existingIndex = records.indexOfFirst { it.employeeId == employeeId && it.date == formattedDate }
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
 
-        val record = if (existingIndex >= 0) {
-            records[existingIndex].copy(checkInTime = formattedTime, status = status)
-        } else {
-            AttendanceRecord(
-                employeeId = employeeId,
-                employeeName = employeeName,
-                date = formattedDate,
-                checkInTime = formattedTime,
-                checkOutTime = null,
-                status = status
-            )
-        }
-
-        if (existingIndex >= 0) {
-            records[existingIndex] = record
-        } else {
-            records.add(record)
-        }
-
-        saveRecords(records)
-        return record
-    }
-
-    fun recordCheckOut(employeeId: String, employeeName: String): AttendanceRecord {
-        val now = LocalDate.now()
-        val currentTime = LocalTime.now()
-        val formattedDate = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        val formattedTime = currentTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-        val officialEnd = LocalTime.of(17, 30)
-        val records = getRecords().toMutableList()
-        val existingIndex = records.indexOfFirst { it.employeeId == employeeId && it.date == formattedDate }
-
-        val existing = if (existingIndex >= 0) records[existingIndex] else AttendanceRecord(
-            employeeId = employeeId,
-            employeeName = employeeName,
-            date = formattedDate,
-            checkInTime = null,
-            checkOutTime = null,
-            status = "لم يتم تسجيل الدخول"
-        )
-
-        val status = if (currentTime.isBefore(officialEnd)) "انصراف مبكر" else "منتهي"
-        val updated = existing.copy(
-            employeeName = employeeName,
-            checkOutTime = formattedTime,
-            status = status
-        )
-
-        if (existingIndex >= 0) {
-            records[existingIndex] = updated
-        } else {
-            records.add(updated)
-        }
-
-        saveRecords(records)
-        return updated
-    }
-
-    fun getRecords(): List<AttendanceRecord> {
-        val raw = prefs.getString(key, "[]") ?: "[]"
-        val array = JSONArray(raw)
-        val records = mutableListOf<AttendanceRecord>()
-
-        for (index in 0 until array.length()) {
-            val obj = array.getJSONObject(index)
-            val record = AttendanceRecord(
-                employeeId = obj.getString("employeeId"),
-                employeeName = obj.getString("employeeName"),
-                date = obj.getString("date"),
-                checkInTime = obj.optString("checkInTime", "").ifEmpty { null },
-                checkOutTime = obj.optString("checkOutTime", "").ifEmpty { null },
-                status = obj.getString("status")
-            )
-            records.add(record)
-        }
-
-        return records
-    }
-
-    private fun saveRecords(records: List<AttendanceRecord>) {
-        val array = JSONArray()
-        records.forEach { record ->
-            val obj = JSONObject().apply {
-                put("employeeId", record.employeeId)
-                put("employeeName", record.employeeName)
-                put("date", record.date)
-                put("checkInTime", record.checkInTime ?: "")
-                put("checkOutTime", record.checkOutTime ?: "")
-                put("status", record.status)
-            }
-            array.put(obj)
-        }
-        prefs.edit().putString(key, array.toString()).apply()
-    }
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 }
-
-data class AttendanceRecord(
-    val employeeId: String,
-    val employeeName: String,
-    val date: String,
-    val checkInTime: String? = null,
-    val checkOutTime: String? = null,
-    val status: String = "لم يتم تسجيل الدخول"
-)

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">نظام حضور وانصراف</string>
+    <string name="employee_name_hint">اسم الموظف</string>
+    <string name="employee_id_hint">رقم الموظف</string>
+    <string name="check_in">حضور</string>
+    <string name="check_out">انصراف</string>
+    <string name="attendance_status">حالة اليوم</string>
+    <string name="records_title">السجلات</string>
+    <string name="working_hours">دوام رسمي: 08:30 - 17:30</string>
+    <string name="default_status">انتظار تسجيل الحضور</string>
+</resources>

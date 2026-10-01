@@ -1,0 +1,7 @@
+# هذا ملف مثال لكيفية إنشاء key.properties
+# انسخه إلى ملف key.properties في جذر المشروع ثم عدّل القيم
+
+storeFile=keystore/attendance-release-key.jks
+storePassword=123456
+keyAlias=attendance-key
+keyPassword=123456

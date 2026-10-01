@@ -1,37 +1,60 @@
 # نظام حضور وانصراف الموظفين
 
-هذا هو مشروع Android أساسي لتطبيق حضور وانصراف الموظفين في مواعيد العمل الرسمية.
+هذا هو مشروع Android لتطبيق حضور وانصراف الموظفين في مواعيد العمل الرسمية.
 
 ## المميزات
 - تسجيل حضور الموظف
 - تسجيل انصراف الموظف
-- حساب حالة الموظف: حاضر / متأخر / انصراف مبكر
+- حالة الحضور: حاضر / متأخر / انصراف مبكر
 - حفظ السجلات محليًا داخل التطبيق
-- شاشة بسيطة وواجهة عربية
+- واجهة عربية
 
 ## متطلبات التشغيل
 - Android Studio Iguana أو أحدث
 - JDK 17
 - Android SDK 34
 
-## تشغيل المشروع
-1. افتح المشروع في Android Studio.
-2. انتظر حتى يتم تنزيل Gradle.
-3. اختر جهاز افتراضي أو هاتف فعلي.
-4. اضغط Run.
+## إنشاء ملف التوقيع
+1. انسخ الملف `key.properties.example` إلى `key.properties`
+2. أنشئ مجلد `keystore` في جذر المشروع
+3. أنشئ ملف keystore محليًا عبر الأمر التالي:
 
-## هيكل المشروع
-- `app/src/main/java/com/example/attendance/MainActivity.kt` — المنطق الرئيسي
-- `app/src/main/res/layout/activity_main.xml` — شاشة التطبيق
-- `app/src/main/res/values/strings.xml` — النصوص العربية
-- `app/src/main/AndroidManifest.xml` — ملف التطبيق الرسمي
+```bash
+keytool -genkeypair -v \
+  -keystore keystore/attendance-release-key.jks \
+  -keyalias attendance-key \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -storepass 123456 \
+  -keypass 123456 \
+  -dname "CN=Attendance App, OU=IT, O=Company, L=City, S=State, C=US"
+```
+
+4. عدّل قيم `key.properties` لتطابق ملف keystore الذي تم إنشاؤه.
+
+## بناء ملف APK
+بعد إعداد ملف التوقيع، نفّذ الأمر التالي:
+
+### Windows
+```bash
+gradlew.bat assembleRelease
+```
+
+### macOS/Linux
+```bash
+./gradlew assembleRelease
+```
+
+سيتم إنشاء الملف في المسار التالي:
+- `app/build/outputs/apk/release/`
 
 ## ملاحظات
-هذا المشروع يمثل نسخة MVP أولية (Minimum Viable Product) للتطبيق، ويمكن تطويره لاحقًا بإضافة:
+هذا المشروع يمثل نسخة MVP أولية (Minimum Viable Product)، ويمكن تطويره لاحقًا بإضافة:
 - صلاحيات المدير والموظف
-- قاعدة بيانات Firebase أو API
-- GPS والتحقق من الموقع
-- تقارير شهرية
+- Firebase أو API
+- الموقع GPS
+- التقارير الشهرية
 - الإجازات والغياب
 
 ## المالك
